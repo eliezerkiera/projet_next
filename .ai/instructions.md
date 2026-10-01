@@ -1,171 +1,184 @@
-# Règles de travail pour l'agent
+# RÈGLE PRIORITAIRE : PLAN AVANT MODIFICATION
 
-## Contexte du projet
-- Application Next.js (App Router, TypeScript strict) qui consomme une API REST externe.
-- Pas de base de données locale, pas d'ORM, pas de système d'authentification propre.
-- Gestionnaire de paquets : **npm** (n'utilise jamais pnpm/yarn, ne modifie que `package-lock.json` via npm).
-- L'API est la source de vérité : ne jamais dupliquer sa logique métier côté front.
+Cette règle prime sur toute autre consigne et sur ta tendance à agir directement.
+
+Tant que je n'ai pas écrit « GO » (ou « valide ») dans un message, tu as INTERDICTION de :
+- créer, modifier ou supprimer un fichier ;
+- exécuter une commande qui modifie le projet (installation de dépendance, génération de code, etc.).
+
+Tu peux lire des fichiers et lancer des commandes en lecture seule pour préparer ton plan.
+
+Procédure :
+1. Explore le code (lecture seule).
+2. Présente le plan (voir « Plan avant modification »).
+3. Termine ta réponse par : « En attente de ton GO. » et ARRÊTE-TOI. N'écris aucun code de modification dans cette réponse.
+4. N'implémente qu'après mon « GO ». Si j'ajoute des remarques avec mon GO, applique-les telles quelles.
+
+Si tu as déjà modifié des fichiers sans GO, arrête-toi, dis-le-moi et propose d'annuler.
+
+Seule exception : typo, formatage ou commentaire dans un seul fichier, sans aucun impact
+fonctionnel. En cas de doute, ce n'est PAS une exception.
+
+---
+
+# Fichiers de référence
+
+- `.ai/api-rules.md` : règles d'implémentation de l'API (auth, tokens, refresh, locale, erreurs).
+  **Lis-le EN ENTIER avant toute tâche qui touche à l'API, à l'authentification, aux cookies,
+  au proxy ou à la locale.** Dis-moi que tu l'as lu en commençant ton plan.
+- `lib/api/ENDPOINTS.md` : contrat vivant des endpoints V2 (aucun contrat OpenAPI n'existe).
+- `.ai/changelog.md` : journal des modifications.
+- `.ai/backlog.md` : propositions reportées (optionnel).
+
+---
+
+# Contexte du projet
+
+- Application **Next.js 16** (App Router, TypeScript strict, Turbopack par défaut).
+  Vérifie le numéro mineur dans `package.json`.
+- Elle consomme une API REST externe (Laravel, V2). Pas de base de données locale, pas d'ORM.
+- Gestionnaire de paquets : **npm** (jamais pnpm/yarn ; `package-lock.json` modifié uniquement via npm).
+- L'API est la source de vérité : ne duplique jamais sa logique métier côté front.
+- Le front ne gère pas les utilisateurs : l'authentification est déléguée à l'API.
 
 ## Commandes
 - Dev : `npm run dev`
-- Lint : `npm run lint`
+- Lint : `npm run lint` (doit appeler ESLint directement : `next lint` n'existe plus en v16)
 - Types : `npx tsc --noEmit`
-- Tests : `npm test` (à adapter si aucun framework n'est configuré)
-- Build : `npm run build`
+- Tests : `npm test` (À COMPLÉTER si aucun framework n'est configuré)
+- Build : `npm run build` (ne lance PAS le lint en v16 : exécute-le séparément)
 
 ## Structure (à adapter)
 - `app/` : routes, layouts, `loading.tsx`, `error.tsx`
 - `components/` : composants UI réutilisables
-- `lib/api/` : client API, types et fonctions d'appel (seul endroit autorisé à faire des `fetch` vers l'API)
-- `.ai/changelog.md` : journal des modifications
+- `lib/api/` : seul endroit autorisé à appeler l'API
+- `lib/api/types/` : types et schémas Zod issus de réponses réelles
+- `proxy.ts` : remplace `middleware.ts` en Next 16
+
+## Particularités Next.js 16 (à respecter)
+- `proxy.ts` remplace `middleware.ts` (ne crée jamais de `middleware.ts`).
+- `cookies()`, `headers()`, `params` et `searchParams` sont asynchrones : toujours `await`.
+- Un Server Component ne peut pas écrire de cookie : écriture uniquement dans
+  `proxy.ts`, un Route Handler ou une Server Action.
+- Le cache a changé (Cache Components en opt-in, signature de `revalidateTag`,
+  `updateTag`/`refresh` pour les Server Actions). Ne te fie pas à ta mémoire :
+  consulte la doc officielle de la v16 avant toute décision de cache, et dis-moi
+  quelle page de doc tu as utilisée.
+- N'utilise jamais de cache partagé (`use cache`, `revalidate`, rendu statique) pour des
+  données dépendant d'un utilisateur.
+- Si tu as un doute sur une API de Next 16, dis-le au lieu de deviner depuis des
+  exemples des versions 13 à 15.
 
 ---
 
-## Workflow de modification
+# Workflow de modification
 
-### 0. Avant de planifier
-- Explore le code existant : réutilise helpers, composants et patterns en place
-  plutôt que d'en créer de nouveaux.
-- Consulte la doc de la version de Next.js installée (`package.json`) pour tout ce qui
-  touche au cache, au routing ou à `fetch`. Ne te fie pas à ta mémoire : les
-  comportements par défaut ont changé entre versions.
-- Si un contrat d'API existe (OpenAPI/Swagger, doc, exemples de réponses), lis-le
-  avant de typer quoi que ce soit. Ne devine jamais la forme d'une réponse.
-- Si la demande est ambiguë, pose tes questions (3 maximum, les plus bloquantes)
-  avant de planifier.
+## 0. Avant de planifier
+- Explore le code existant : réutilise helpers, composants et patterns en place.
+- Si la tâche touche l'API : lis `.ai/api-rules.md` et `lib/api/ENDPOINTS.md`.
+- Si la demande est ambiguë, pose tes questions (3 maximum, les plus bloquantes) avant de planifier.
+- Si tu vois une meilleure approche que celle demandée, dis-le ICI, avant de planifier.
 
-### 1. Plan avant modification
-Avant toute modification de code (nouveau fichier, édition, suppression, refactor),
-présente un plan concis avant d'écrire quoi que ce soit :
+## 1. Plan avant modification
+Présente un plan concis :
 - Fichiers créés/modifiés/supprimés
 - Approche technique choisie (et alternative écartée si pertinent)
-- Impact Next.js si applicable :
-  - Server Component vs Client Component (justifier tout `"use client"`)
-  - Stratégie de cache / revalidation (options de `fetch`, `revalidatePath`, `revalidateTag`)
-  - Nouvelles routes, layouts, middleware ou Route Handlers
-- Endpoints de l'API utilisés (méthode, chemin, paramètres, forme de réponse attendue)
+- Impact Next.js si applicable : Server vs Client Component (justifier tout `"use client"`),
+  stratégie de cache, nouvelles routes/layouts/`proxy.ts`/Route Handlers/Server Actions
+- Si l'API est touchée : endpoints utilisés avec leur statut
+  (« observé » ou « supposé »), conformément à `.ai/api-rules.md`
 - Nouvelles variables d'environnement (préciser lesquelles sont `NEXT_PUBLIC_`)
 - Nouvelles dépendances éventuelles (à valider avant installation)
 - Risques ou points d'incertitude
 
-Attends ma validation explicite avant d'exécuter le plan.
-
 Paliers :
-- Correction triviale à un seul fichier sans impact fonctionnel (typo, formatage,
-  commentaire) : pas de plan.
-- Changement de moins de 3 fichiers sans impact cache/API/routing : plan en 2-3 lignes.
+- Correction triviale à un seul fichier sans impact fonctionnel : pas de plan (voir règle prioritaire).
+- Moins de 3 fichiers sans impact cache/API/auth/routing : plan en 2-3 lignes.
 - Tout le reste : plan détaillé.
 
-### 2. Pendant la modification
-- Commente les modifications importantes pour qu'une autre personne puisse se retrouver.
+## 2. Pendant la modification
 - Commentaires en anglais, qui expliquent le *pourquoi* (choix, contrainte, piège),
   pas ce que le code fait déjà clairement.
 - Respecte la structure et les conventions existantes (App Router, TypeScript strict, pas de `any`).
 - Ne modifie que les fichiers prévus dans le plan validé. Pas de refactor, renommage ou
-  "amélioration" non demandés. Les problèmes hors périmètre sont signalés à la fin, pas corrigés.
+  « amélioration » non demandés. Les problèmes hors périmètre sont signalés à la fin, pas corrigés.
 - Si le plan doit changer en cours de route, arrête-toi et redemande validation.
 - Ne jamais exposer de secret ou de code serveur côté client.
 
-### 3. Règles spécifiques à la consommation de l'API
-- Tous les appels passent par `lib/api/` : pas de `fetch` éparpillé dans les composants.
-- L'URL de base vient d'une variable d'environnement, jamais codée en dur.
-- Si l'API exige une clé ou un token : appel côté serveur uniquement (Server Component
-  ou Route Handler), jamais `NEXT_PUBLIC_`.
-- Type les réponses. Pour les données non fiables ou susceptibles de dériver du contrat,
-  valide aux frontières (par exemple avec Zod) plutôt que de caster avec `as`.
-- Gère explicitement : réponse non-OK (4xx/5xx), erreurs réseau, timeout, liste vide,
-  champs optionnels ou `null`. Aucun `fetch` sans gestion d'erreur.
-- Choisis volontairement le comportement de cache de chaque appel (statique, revalidé,
-  dynamique) et documente-le en commentaire.
-- Pas de waterfalls inutiles : parallélise les appels indépendants (`Promise.all`).
-- Ne jamais logger de données sensibles (tokens, données personnelles).
-- Pour les mutations (POST/PUT/DELETE), prévois l'état de chargement, l'erreur
-  affichée à l'utilisateur et la revalidation des données concernées.
+---
 
-### 4. Checklist UI (si composant ou page modifié)
+# Checklist UI (si composant ou page modifié)
 - États loading, error et vide gérés.
 - `next/image` pour les images, `"use client"` uniquement si nécessaire.
 - Labels, `alt` et navigation clavier de base.
+- Formulaires : état de chargement, erreurs de validation par champ, erreur générique,
+  pas de double soumission.
 
-### 5. Sécurité et actions interdites
+# Sécurité et actions interdites
 - Ne lis, ne modifie et n'affiche jamais les fichiers `.env*` (utilise `.env.example`).
-- Pas de commande destructive (`rm -rf`, `git push --force`, `git reset --hard`)
-  sans accord explicite.
+- Ne jamais logger ni afficher un token (access, refresh, challenge, verification, reset),
+  un code OTP, un mot de passe, un cookie ou un header `Authorization`, même en debug.
+- Pas d'identifiants ni de tokens de test en dur dans le code.
+- Pas de commande destructive (`rm -rf`, `git push --force`, `git reset --hard`) sans accord explicite.
 - Pas de commit ni de push sauf demande explicite. Ne travaille jamais sur `main`.
-- Pas d'appel à une API de production pour des tests ni de mutation sur des données réelles.
-- Avant d'ajouter une dépendance : vérifie qu'elle existe, qu'elle est maintenue,
-  et qu'aucune dépendance déjà présente ne couvre le besoin.
+- Pas d'appel à une API de production ni de mutation sur des données réelles.
+- Avant d'ajouter une dépendance : vérifie qu'elle existe, qu'elle est maintenue, et
+  qu'aucune dépendance déjà présente ne couvre le besoin.
 
-### 6. Vérification avant de conclure
-Exécute et corrige :
-`npx tsc --noEmit && npm run lint && npm test`
-Pour toute modification touchant le routing, le cache, les Server/Client Components,
-les appels API ou la config Next.js, exécute aussi `npm run build`.
-Si une commande échoue et que tu ne peux pas la corriger, dis-le explicitement
-au lieu de conclure. Ne prétends jamais qu'un test ou un build passe sans l'avoir exécuté.
+# Vérification avant de conclure
+Exécute et corrige : `npx tsc --noEmit && npm run lint && npm test`
+Pour toute modification touchant le routing, `proxy.ts`, le cache, les Server/Client
+Components, les cookies, l'auth, les appels API ou la config Next.js, exécute aussi `npm run build`.
+Si une commande échoue et que tu ne peux pas la corriger, dis-le au lieu de conclure.
+Ne prétends jamais qu'un test ou un build passe sans l'avoir exécuté.
 
-### 7. Rapport final
+# Propositions proactives
+Si tu repères quelque chose qui mérite mon attention, propose-le. Ne l'implémente jamais
+sans mon accord.
+
+Sujets pertinents : bug ou fragilité hors périmètre, duplication, risque de sécurité,
+problème de performance, écart entre l'API réelle et `ENDPOINTS.md`, dépendance inutile,
+règle manquante dans ces fichiers, meilleure approche que celle demandée.
+
+Format (section « Propositions » en fin de réponse), pour chacune :
+- **Constat** (avec le fichier concerné)
+- **Proposition**
+- **Effort / impact** (faible, moyen, élevé)
+- **Urgence** (maintenant, prochainement, optionnel)
+
+Règles :
+- Maximum 3 par réponse, les plus utiles d'abord. S'il n'y a rien de pertinent, n'écris rien.
+- Ne répète pas une proposition refusée ou reportée. Pas de changements purement stylistiques.
+- Distingue fait vérifié et intuition (« je n'ai pas vérifié, mais... »).
+- Si une proposition change le périmètre en cours, arrête-toi et demande ma décision.
+- Sur demande, ajoute les propositions reportées en tête de `.ai/backlog.md`.
+
+# Rapport final
 Termine chaque tâche par :
 1. Ce qui a été fait (et pourquoi).
 2. Les commandes exécutées et leur résultat réel.
-3. Ce qui n'a PAS été vérifié ou reste incertain (par exemple un endpoint non testé
-   contre la vraie API).
+3. Ce qui n'a PAS été vérifié ou reste incertain, dont les endpoints et formes de
+   réponse non confirmés par une vraie réponse de l'API.
 4. Comment tester manuellement (URL, étapes).
+5. Propositions, si pertinent.
 
-### 8. Mise à jour du changelog
+# Mise à jour du changelog
 Après toute modification validée et terminée, ajoute une entrée en tête de
-`.ai/changelog.md` (pas à la fin) avec :
-- Date
-- Résumé du travail effectué (2-5 lignes, orienté "ce qui a changé et pourquoi")
-- Fichiers principaux touchés
-- Endpoints API ajoutés ou utilisés, le cas échéant
-- Nouvelles variables d'environnement ou dépendances, le cas échéant
+`.ai/changelog.md` (pas à la fin) avec : date, résumé (2-5 lignes, « ce qui a changé et
+pourquoi »), fichiers principaux touchés, endpoints API ajoutés ou utilisés, nouvelles
+variables d'environnement ou dépendances.
 
-Format d'entrée :
+Format :
 ```markdown
 ## [2026-09-30] — {résumé court}
 - {détail 1}
 - {détail 2}
-Fichiers : `app/products/page.tsx`, `lib/api/products.ts`
-API : `GET /products?page=` (revalidé toutes les 60 s)
+Fichiers : `app/login/page.tsx`, `lib/api/auth.ts`
+API : `POST /auth/login` (observé), `POST /auth/login/verify-code` (documenté)
 Env / deps : `API_BASE_URL` (serveur uniquement), `zod`
 ```
 
 Ne jamais réécrire ou supprimer les entrées précédentes, uniquement ajouter.
 
-### 9. Amélioration continue
-Si je te corrige sur un point qui pourrait se répéter, propose une ligne à ajouter
-à ce fichier de règles.
-
-
-### 10. Propositions proactives
-Si tu repères quelque chose qui mérite mon attention, propose-le. Ne l'implémente jamais
-sans mon accord : une proposition n'est pas une autorisation de modifier.
-
-Sujets qui méritent une proposition :
-- Bug, incohérence ou fragilité repérés hors périmètre
-- Duplication ou code qui gagnerait à être factorisé
-- Risque de sécurité (secret exposé, donnée sensible loggée, `"use client"` qui fuit du code serveur)
-- Problème de performance (waterfalls de requêtes, cache mal choisi, bundle alourdi, images non optimisées)
-- Écart entre l'API réelle et les types ou la doc du projet
-- Dépendance inutile, dépréciée ou redondante
-- Règle qui manque dans ce fichier, si une erreur se répète
-- Meilleure approche que celle que j'ai demandée (dis-le AVANT de planifier, pas après)
-
-Format : regroupe les propositions dans une section « Propositions » à la fin de ta réponse.
-Pour chacune :
-- **Constat** : ce que tu as vu, avec le fichier concerné
-- **Proposition** : ce que tu ferais
-- **Effort / impact** : faible, moyen ou élevé, et ce que ça apporte
-- **Urgence** : à faire maintenant, prochainement ou optionnel
-
-Règles :
-- Maximum 3 propositions par réponse, les plus utiles d'abord. Pas de remplissage :
-  s'il n'y a rien de pertinent, n'écris rien.
-- Ne répète pas une proposition que j'ai déjà refusée ou reportée.
-- Ne propose pas de changements purement stylistiques ou de préférence personnelle.
-- Distingue ce qui est un fait vérifié de ce qui est une intuition (« je n'ai pas vérifié, mais... »).
-- Si une proposition change le périmètre de la tâche en cours, arrête-toi et demande
-  ma décision avant de continuer.
-- Pour une proposition non traitée, je peux te demander de l'ajouter à `.ai/backlog.md`
-  (en tête de fichier, même logique que le changelog).
+# Amélioration continue
+Si je te corrige sur un point qui pourrait se répéter, propose une ligne à ajouter à ces fichiers.
