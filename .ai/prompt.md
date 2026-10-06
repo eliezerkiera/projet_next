@@ -1,3 +1,3 @@
 - lis le fichier `AGENTS.md` pour avoir le context si tu ne l'a pas deja fait,
-- lis le fichier `.ai/test_auth_v2_final.md`,
+- lis le fichier `openapi.yaml`,
 - fais ce qui est dit dans le fichier `.ai/todo.md` en respectant aussi les instructions dans `.ai/instructions.md`
