@@ -1,184 +1,276 @@
-# RÈGLE PRIORITAIRE : PLAN AVANT MODIFICATION
+# AGENTS.md
 
-Cette règle prime sur toute autre consigne et sur ta tendance à agir directement.
-
-Tant que je n'ai pas écrit « GO » (ou « valide ») dans un message, tu as INTERDICTION de :
-- créer, modifier ou supprimer un fichier ;
-- exécuter une commande qui modifie le projet (installation de dépendance, génération de code, etc.).
-
-Tu peux lire des fichiers et lancer des commandes en lecture seule pour préparer ton plan.
-
-Procédure :
-1. Explore le code (lecture seule).
-2. Présente le plan (voir « Plan avant modification »).
-3. Termine ta réponse par : « En attente de ton GO. » et ARRÊTE-TOI. N'écris aucun code de modification dans cette réponse.
-4. N'implémente qu'après mon « GO ». Si j'ajoute des remarques avec mon GO, applique-les telles quelles.
-
-Si tu as déjà modifié des fichiers sans GO, arrête-toi, dis-le-moi et propose d'annuler.
-
-Seule exception : typo, formatage ou commentaire dans un seul fichier, sans aucun impact
-fonctionnel. En cas de doute, ce n'est PAS une exception.
+> Ce fichier s'adresse à **tous les agents de codage IA** (Claude Code, Codex, Cursor, Copilot, Gemini, etc.) qui interviennent sur ce dépôt.
+> Plusieurs agents se relaient sur ce projet : ce fichier et le dossier `.ai/` sont la **source de vérité commune**.
+> Lis ce fichier en entier avant toute modification. En cas de conflit entre ce fichier et tes habitudes par défaut, **ce fichier gagne**.
 
 ---
 
-# Fichiers de référence
+## 0. Éléments à compléter par l'humain
 
-- `.ai/api-rules.md` : règles d'implémentation de l'API (auth, tokens, refresh, locale, erreurs).
-  **Lis-le EN ENTIER avant toute tâche qui touche à l'API, à l'authentification, aux cookies,
-  au proxy ou à la locale.** Dis-moi que tu l'as lu en commençant ton plan.
-- `lib/api/ENDPOINTS.md` : contrat vivant des endpoints V2 (aucun contrat OpenAPI n'existe).
-- `.ai/changelog.md` : journal des modifications.
-- `.ai/backlog.md` : propositions reportées (optionnel).
+Les valeurs entre `<...>` sont à remplir une fois. Si l'une d'elles est encore vide, **demande-la, ne la devine pas**.
 
----
-
-# Contexte du projet
-
-- Application **Next.js 16** (App Router, TypeScript strict, Turbopack par défaut).
-  Vérifie le numéro mineur dans `package.json`.
-- Elle consomme une API REST externe (Laravel, V2). Pas de base de données locale, pas d'ORM.
-- Gestionnaire de paquets : **npm** (jamais pnpm/yarn ; `package-lock.json` modifié uniquement via npm).
-- L'API est la source de vérité : ne duplique jamais sa logique métier côté front.
-- Le front ne gère pas les utilisateurs : l'authentification est déléguée à l'API.
-
-## Commandes
-- Dev : `npm run dev`
-- Lint : `npm run lint` (doit appeler ESLint directement : `next lint` n'existe plus en v16)
-- Types : `npx tsc --noEmit`
-- Tests : `npm test` (À COMPLÉTER si aucun framework n'est configuré)
-- Build : `npm run build` (ne lance PAS le lint en v16 : exécute-le séparément)
-
-## Structure (à adapter)
-- `app/` : routes, layouts, `loading.tsx`, `error.tsx`
-- `components/` : composants UI réutilisables
-- `lib/api/` : seul endroit autorisé à appeler l'API
-- `lib/api/types/` : types et schémas Zod issus de réponses réelles
-- `proxy.ts` : remplace `middleware.ts` en Next 16
-
-## Particularités Next.js 16 (à respecter)
-- `proxy.ts` remplace `middleware.ts` (ne crée jamais de `middleware.ts`).
-- `cookies()`, `headers()`, `params` et `searchParams` sont asynchrones : toujours `await`.
-- Un Server Component ne peut pas écrire de cookie : écriture uniquement dans
-  `proxy.ts`, un Route Handler ou une Server Action.
-- Le cache a changé (Cache Components en opt-in, signature de `revalidateTag`,
-  `updateTag`/`refresh` pour les Server Actions). Ne te fie pas à ta mémoire :
-  consulte la doc officielle de la v16 avant toute décision de cache, et dis-moi
-  quelle page de doc tu as utilisée.
-- N'utilise jamais de cache partagé (`use cache`, `revalidate`, rendu statique) pour des
-  données dépendant d'un utilisateur.
-- Si tu as un doute sur une API de Next 16, dis-le au lieu de deviner depuis des
-  exemples des versions 13 à 15.
+- **Nom du projet** : `projet_next`
+- **Version de Next.js** : `16.3.5` (App Router)
+- **Gestionnaire de paquets** : `npm`
+- **UI** : `Tailwind CSS + DaisyUI`
 
 ---
 
-# Workflow de modification
+## 1. Règles d'or (non négociables)
 
-## 0. Avant de planifier
-- Explore le code existant : réutilise helpers, composants et patterns en place.
-- Si la tâche touche l'API : lis `.ai/api-rules.md` et `lib/api/ENDPOINTS.md`.
-- Si la demande est ambiguë, pose tes questions (3 maximum, les plus bloquantes) avant de planifier.
-- Si tu vois une meilleure approche que celle demandée, dis-le ICI, avant de planifier.
-
-## 1. Plan avant modification
-Présente un plan concis :
-- Fichiers créés/modifiés/supprimés
-- Approche technique choisie (et alternative écartée si pertinent)
-- Impact Next.js si applicable : Server vs Client Component (justifier tout `"use client"`),
-  stratégie de cache, nouvelles routes/layouts/`proxy.ts`/Route Handlers/Server Actions
-- Si l'API est touchée : endpoints utilisés avec leur statut
-  (« observé » ou « supposé »), conformément à `.ai/api-rules.md`
-- Nouvelles variables d'environnement (préciser lesquelles sont `NEXT_PUBLIC_`)
-- Nouvelles dépendances éventuelles (à valider avant installation)
-- Risques ou points d'incertitude
-
-Paliers :
-- Correction triviale à un seul fichier sans impact fonctionnel : pas de plan (voir règle prioritaire).
-- Moins de 3 fichiers sans impact cache/API/auth/routing : plan en 2-3 lignes.
-- Tout le reste : plan détaillé.
-
-## 2. Pendant la modification
-- Commentaires en anglais, qui expliquent le *pourquoi* (choix, contrainte, piège),
-  pas ce que le code fait déjà clairement.
-- Respecte la structure et les conventions existantes (App Router, TypeScript strict, pas de `any`).
-- Ne modifie que les fichiers prévus dans le plan validé. Pas de refactor, renommage ou
-  « amélioration » non demandés. Les problèmes hors périmètre sont signalés à la fin, pas corrigés.
-- Si le plan doit changer en cours de route, arrête-toi et redemande validation.
-- Ne jamais exposer de secret ou de code serveur côté client.
+1. **Comprendre avant d'agir.** Lis les fichiers concernés, `.ai/handoff.md` et l'historique git récent avant d'écrire du code.
+2. **Plan d'abord, code ensuite.** Tout changement passe par le workflow de la section 2 : plan, validation de l'humain, exécution.
+3. **Fais la plus petite modification qui résout le problème.** Pas de refactoring, de renommage, de reformatage ou de « petite amélioration » non demandés. Si tu repères un autre problème, note-le dans `.ai/handoff.md` au lieu de le corriger.
+4. **Ne réinvente pas l'existant.** Cherche d'abord un composant, un hook, un utilitaire ou un pattern déjà présent dans le dépôt et réutilise-le.
+5. **Aucune dépendance ajoutée, aucun changement de stack ou d'architecture sans accord explicite.** Cela inclut : nouvelle librairie, passage au Pages Router, changement d'ORM ou de librairie UI, changement de gestionnaire de paquets, modification de la configuration (`next.config.*`, `tsconfig.json`, ESLint, Tailwind, CI).
+6. **N'invente rien.** Pas d'API, de props, d'options de configuration ou de fonctions « qui devraient exister ». Si tu n'es pas sûr, lis le code, la documentation officielle ou `node_modules`, ou pose la question.
+7. **Ne casse pas ce qui marche.** Si ton changement peut avoir un effet de bord ailleurs, vérifie-le (recherche des usages) ou signale-le dans le plan.
+8. **Ne dis jamais « c'est fait » sans preuve.** Lance les vérifications de la section 2.3 et rapporte leur résultat réel.
 
 ---
 
-# Checklist UI (si composant ou page modifié)
-- États loading, error et vide gérés.
-- `next/image` pour les images, `"use client"` uniquement si nécessaire.
-- Labels, `alt` et navigation clavier de base.
-- Formulaires : état de chargement, erreurs de validation par champ, erreur générique,
-  pas de double soumission.
+## 2. Workflow de modification
 
-# Sécurité et actions interdites
-- Ne lis, ne modifie et n'affiche jamais les fichiers `.env*` (utilise `.env.example`).
-- Ne jamais logger ni afficher un token (access, refresh, challenge, verification, reset),
-  un code OTP, un mot de passe, un cookie ou un header `Authorization`, même en debug.
-- Pas d'identifiants ni de tokens de test en dur dans le code.
-- Pas de commande destructive (`rm -rf`, `git push --force`, `git reset --hard`) sans accord explicite.
-- Pas de commit ni de push sauf demande explicite. Ne travaille jamais sur `main`.
-- Pas d'appel à une API de production ni de mutation sur des données réelles.
-- Avant d'ajouter une dépendance : vérifie qu'elle existe, qu'elle est maintenue, et
-  qu'aucune dépendance déjà présente ne couvre le besoin.
+### 2.1 Plan avant modification
 
-# Vérification avant de conclure
-Exécute et corrige : `npx tsc --noEmit && npm run lint && npm test`
-Pour toute modification touchant le routing, `proxy.ts`, le cache, les Server/Client
-Components, les cookies, l'auth, les appels API ou la config Next.js, exécute aussi `npm run build`.
-Si une commande échoue et que tu ne peux pas la corriger, dis-le au lieu de conclure.
-Ne prétends jamais qu'un test ou un build passe sans l'avoir exécuté.
+Avant toute modification de code (nouveau fichier, édition, suppression, migration, refactor), **présente un plan concis, dans la langue de l'humain, avant d'écrire quoi que ce soit** :
 
-# Propositions proactives
-Si tu repères quelque chose qui mérite mon attention, propose-le. Ne l'implémente jamais
-sans mon accord.
-
-Sujets pertinents : bug ou fragilité hors périmètre, duplication, risque de sécurité,
-problème de performance, écart entre l'API réelle et `ENDPOINTS.md`, dépendance inutile,
-règle manquante dans ces fichiers, meilleure approche que celle demandée.
-
-Format (section « Propositions » en fin de réponse), pour chacune :
-- **Constat** (avec le fichier concerné)
-- **Proposition**
-- **Effort / impact** (faible, moyen, élevé)
-- **Urgence** (maintenant, prochainement, optionnel)
-
-Règles :
-- Maximum 3 par réponse, les plus utiles d'abord. S'il n'y a rien de pertinent, n'écris rien.
-- Ne répète pas une proposition refusée ou reportée. Pas de changements purement stylistiques.
-- Distingue fait vérifié et intuition (« je n'ai pas vérifié, mais... »).
-- Si une proposition change le périmètre en cours, arrête-toi et demande ma décision.
-- Sur demande, ajoute les propositions reportées en tête de `.ai/backlog.md`.
-
-# Rapport final
-Termine chaque tâche par :
-1. Ce qui a été fait (et pourquoi).
-2. Les commandes exécutées et leur résultat réel.
-3. Ce qui n'a PAS été vérifié ou reste incertain, dont les endpoints et formes de
-   réponse non confirmés par une vraie réponse de l'API.
-4. Comment tester manuellement (URL, étapes).
-5. Propositions, si pertinent.
-
-# Mise à jour du changelog
-Après toute modification validée et terminée, ajoute une entrée en tête de
-`.ai/changelog.md` (pas à la fin) avec : date, résumé (2-5 lignes, « ce qui a changé et
-pourquoi »), fichiers principaux touchés, endpoints API ajoutés ou utilisés, nouvelles
-variables d'environnement ou dépendances.
-
-Format :
 ```markdown
-## [2026-09-30] — {résumé court}
-- {détail 1}
-- {détail 2}
-Fichiers : `app/login/page.tsx`, `lib/api/auth.ts`
-API : `POST /auth/login` (observé), `POST /auth/login/verify-code` (documenté)
-Env / deps : `API_BASE_URL` (serveur uniquement), `zod`
+### Plan
+- **Fichiers** : créés / modifiés / supprimés
+- **Approche** : choix technique retenu (+ alternative écartée si pertinent)
+- **Données** : migrations, seed, variables d'environnement (sinon « aucun impact »)
+- **Dépendances / config** : ajout ou changement (sinon « aucun »)
+- **Vérifications prévues** : tests ajoutés ou mis à jour, commandes à lancer
+- **Risques / incertitudes** : effets de bord possibles, questions ouvertes
 ```
 
-Ne jamais réécrire ou supprimer les entrées précédentes, uniquement ajouter.
+**Attends la validation explicite de l'humain avant d'exécuter le plan.** Le silence, ou l'absence de réponse, ne vaut pas validation.
 
-# Amélioration continue
-Si je te corrige sur un point qui pourrait se répéter, propose une ligne à ajouter à ces fichiers.
+Si, pendant l'exécution, tu t'aperçois que le plan doit changer de façon significative (fichiers non prévus, migration imprévue, nouvelle dépendance, approche différente), **arrête-toi et présente un plan mis à jour** avant de continuer.
+
+**Exception : corrections triviales.** Typo, formatage, commentaire, sur un seul fichier et sans impact fonctionnel : pas de plan préalable ni d'entrée de changelog. En cas de doute, ce n'est pas trivial.
+
+### 2.2 Pendant la modification
+
+- **Commente les modifications importantes dans le code, en anglais**, pour qu'une autre personne (ou un autre agent) puisse s'y retrouver. Un commentaire explique le **pourquoi** (choix, contrainte, piège), pas le quoi.
+- Ne commente pas l'évident. Les commentaires décrivent le code tel qu'il est, pas son historique : pas de « modifié par l'agent X », « ancien code », « fix du bug Y ». L'historique va dans le changelog et dans git.
+- Pas de code mort, pas de `console.log` oubliés, pas de `TODO` sans entrée correspondante dans `.ai/handoff.md`.
+- Ne supprime pas de code, de tests ou de commentaires que tu ne comprends pas : demande.
+- Ne contourne pas une erreur au lieu de la comprendre (test désactivé, cast en `any`, exception attrapée et ignorée).
+- **Après deux tentatives infructueuses sur le même problème, arrête-toi**, résume ce que tu as essayé et demande de l'aide.
+
+### 2.3 Vérifications avant de conclure
+
+Une tâche n'est terminée que si **toutes** ces vérifications passent, et que tu en rapportes le résultat :
+
+1. `lint` : aucune erreur.
+2. `tsc --noEmit` : aucune erreur de type.
+3. `test` : tous les tests passent (ajoute ou mets à jour les tests pertinents pour le code modifié).
+4. `build` : réussit si le changement touche le routage, la configuration, les dépendances ou le rendu serveur.
+5. Le comportement demandé a été **vérifié** (test, exécution, ou raisonnement explicite si l'exécution est impossible).
+
+Si une vérification échoue pour une raison **antérieure à ton changement**, ne la « corrige » pas en douce : signale-la dans `.ai/handoff.md`.
+Si tu ne peux pas exécuter une vérification, **dis-le clairement** ; ne prétends pas qu'elle a réussi.
+
+### 2.4 Mise à jour du changelog
+
+Après toute modification **validée et terminée**, ajoute une entrée **en tête** de `.ai/changelog.md` (pas à la fin). Si le fichier n'existe pas, crée-le avec le titre `# Changelog`.
+
+Format d'entrée (en français) :
+
+```markdown
+## [AAAA-MM-JJ] — {résumé court}
+- {ce qui a changé et pourquoi, détail 1}
+- {détail 2}
+Agent : {nom de l'agent / modèle}
+Fichiers : `src/app/invoices/page.tsx`, `src/lib/invoices.ts`
+Migrations : `{chemin de la migration}` (ou « aucune »)
+Dépendances / env : {paquets ou variables d'environnement ajoutés, ou « aucun »}
+```
+
+- 2 à 5 lignes de détail, orientées « ce qui a changé et pourquoi ».
+- Ne jamais réécrire ou supprimer les entrées précédentes, **uniquement en ajouter**. Si une ancienne entrée est devenue fausse, ajoute une nouvelle entrée qui la corrige.
+- Inclus la mise à jour du changelog dans le même commit que le code correspondant.
+
+---
+
+## 3. Commandes
+
+Utilise **uniquement** ces commandes:
+
+| Action | Commande |
+|---|---|
+| Installer | `npm install` |
+| Développement | `npm dev` |
+| Build de production | `npm build` |
+| Lint | `npm lint` |
+| Vérification des types | `npm exec tsc --noEmit` |
+| Tests | `npm test` |
+
+- N'utilise **jamais** un autre gestionnaire de paquets que celui du projet. Ne crée ni ne modifie de lockfile d'un autre gestionnaire.
+- Ne lance pas de serveur de dev en tâche bloquante sans nécessité. Si un serveur tourne déjà, ne le relance pas.
+
+---
+
+## 4. Structure du projet
+
+```
+src/
+├── app/                 # Routes (App Router), layouts, pages, route handlers
+│   ├── (groupes)/       # Groupes de routes
+│   ├── api/             # Route handlers (route.ts)
+│   └── layout.tsx
+├── components/
+│   ├── ui/              # Composants UI génériques (boutons, inputs...)
+│   └── <feature>/       # Composants spécifiques à une fonctionnalité
+├── lib/                 # Utilitaires, clients (db, auth), helpers
+├── hooks/               # Hooks React réutilisables
+├── actions/             # Server Actions (si utilisées)
+└── types/               # Types partagés
+public/                  # Fichiers statiques
+.ai/                     # Mémoire partagée des agents (changelog, handoff)
+```
+
+> **La structure réelle du dépôt prime sur ce schéma.** Si elle diffère, suis la structure réelle et signale l'écart. Ne déplace pas de fichiers pour « coller » à ce schéma.
+
+- Un composant, un fichier. Fichiers en `kebab-case`, composants en `PascalCase`.
+- Place le code au plus près de son usage ; ne le remonte dans `components/ui` ou `lib` que s'il est réellement réutilisé.
+- Utilise les alias d'import de `tsconfig.json` (ex. `@/`), pas de chemins relatifs profonds.
+
+---
+
+## 5. Conventions de code
+
+### TypeScript
+- **TypeScript strict.** Interdits : `any`, `@ts-ignore`, `@ts-expect-error` sans justification en commentaire, assertions `as` pour faire taire une erreur.
+- Type les entrées et sorties des fonctions exportées.
+- Valide les données externes (formulaires, query params, corps de requête, réponses d'API) avec le validateur déjà utilisé dans le projet (ex. Zod). N'en introduis pas un nouveau.
+
+### Next.js (App Router)
+- **Server Components par défaut.** N'ajoute `"use client"` que si le composant a besoin d'état, d'effets, d'événements navigateur ou d'une librairie cliente. Place-le le plus bas possible dans l'arbre.
+- Récupère les données **côté serveur** (Server Components, route handlers, Server Actions), pas avec `useEffect` + `fetch`, sauf besoin client justifié.
+- **Vérifie la version de Next.js avant d'écrire du code** : certaines API changent selon la version majeure (ex. `params`, `searchParams`, `cookies()` et `headers()` asynchrones dans les versions récentes ; cache par défaut). En cas de doute, consulte la documentation officielle de la version installée.
+- Ne mélange pas `app/` et `pages/`. Pas d'API du Pages Router (`getServerSideProps`, `getStaticProps`, `next/router`) dans `app/`.
+- Utilise les composants natifs : `next/image`, `next/link`, `next/font`, `metadata` / `generateMetadata`.
+- Gère les états **chargement** (`loading.tsx` ou Suspense), **erreur** (`error.tsx`) et **non trouvé** (`not-found.tsx`) pour les routes qui chargent des données.
+- Les Server Actions et route handlers **valident les entrées et vérifient l'autorisation à chaque appel**, jamais seulement côté client.
+
+### React
+- Composants fonctionnels et hooks uniquement.
+- Pas d'état dérivé stocké dans `useState` s'il peut être calculé. Pas de `useEffect` pour ce qui peut se faire au rendu ou dans un gestionnaire d'événement.
+- Clés (`key`) stables dans les listes, jamais l'index si l'ordre peut changer.
+
+### Style et UI
+- Utilise le système de style existant. N'ajoute ni nouvelle librairie de style, ni CSS inline étendu.
+- Accessibilité : HTML sémantique, `alt` sur les images, labels sur les champs, navigation clavier.
+- Responsive par défaut (mobile d'abord).
+- Les textes visibles par l'utilisateur sont dans la langue d'interface de la section 0. Le code, les noms et les commentaires sont en **anglais**.
+- Respecte le style existant (formatage, nommage). Le formateur et le linter du projet font foi.
+
+---
+
+## 6. Sécurité et données
+
+- **Ne jamais committer de secrets** (clés d'API, tokens, mots de passe, URL de base de données avec identifiants).
+- **Ne jamais lire, afficher, modifier ou committer** `.env`, `.env.local` ni aucun fichier de secrets. Si une variable d'environnement est nécessaire, ajoute-la à `.env.example` (sans valeur réelle) et mentionne-la dans le plan et le changelog.
+- Les variables `NEXT_PUBLIC_*` sont exposées au navigateur : **jamais de secret dedans**.
+- **Pas de commandes destructrices** sans accord explicite : suppression massive de fichiers, `git reset --hard`, `git push --force`, `git clean`, réinitialisation ou migration destructive de la base de données, suppression de données.
+- Ne touche pas à la base de production. Les migrations sont **créées** (et listées dans le plan), jamais appliquées en production par un agent.
+- Ne désactive jamais une règle de sécurité ou de lint pour « faire passer » le code (CSP, auth, validation, ESLint, TypeScript).
+- N'envoie pas de code ou de données du projet vers des services externes non prévus.
+
+---
+
+## 7. Git
+
+- Langue des messages de commit : `<anglais | français>`.
+- Format **Conventional Commits** (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`).
+- Commits **petits et atomiques** : un commit = une intention.
+- Ne travaille pas directement sur `main`. Branche `<type>/<description-courte>` (ex. `feat/page-profil`).
+- Avant de commencer : `git status` et `git log --oneline -10`. Si le répertoire contient des modifications que tu n'as pas faites, **ne les écrase pas** et ne les inclus pas dans ton commit : signale-les.
+- Ne committe, ne pousse et ne fusionne que si l'humain l'a demandé ou si le projet l'exige explicitement.
+- N'amende pas et ne réécris pas un historique déjà partagé.
+
+---
+
+## 8. Quand t'arrêter et poser des questions
+
+**Si tu ne comprends pas quelque chose, pose des questions** plutôt que de supposer. Arrête-toi en particulier si :
+
+- la demande est ambiguë ou plusieurs interprétations plausibles sont coûteuses à défaire ;
+- la tâche exige une nouvelle dépendance, un changement d'architecture ou une migration de données ;
+- tu dois modifier du code sensible (authentification, paiement, permissions, données personnelles) ;
+- le code existant contredit ces règles ou la demande ;
+- les tests ou le build échouent pour une raison que tu ne comprends pas ;
+- le travail d'un agent précédent te semble incomplet, contradictoire ou erroné.
+
+Pose **une question claire, avec les options que tu envisages**, plutôt qu'un long message vague.
+
+---
+
+## 9. Mémoire partagée entre agents (`.ai/`)
+
+Deux fichiers, deux rôles distincts :
+
+| Fichier | Rôle | Écriture |
+|---|---|---|
+| `.ai/changelog.md` | **Historique permanent** de ce qui a été fait (section 2.4) | Ajout uniquement, en tête |
+| `.ai/handoff.md` | **État courant** : où on en est, pièges, prochaines étapes | Réécrit à chaque fin de session |
+
+### Au début de ta session
+1. Lis `AGENTS.md`, puis `.ai/handoff.md`, puis les dernières entrées de `.ai/changelog.md`.
+2. Fais `git status` et `git log --oneline -10` pour vérifier que ces fichiers correspondent à l'état réel du code.
+3. S'ils divergent, **fais confiance au code** et signale l'écart dans `.ai/handoff.md`.
+4. Reformule en deux lignes la tâche que tu vas faire. Si elle ne correspond pas à « Prochaines étapes », demande confirmation.
+
+### À la fin de ta session (obligatoire)
+Mets à jour `.ai/handoff.md` avec **uniquement des faits vérifiés**, selon ce modèle (si le fichier n'existe pas, crée-le) :
+
+```markdown
+# Handoff
+
+## État actuel
+- Branche : `<nom>`
+- Dernier commit : `<hash> <message>`
+- Build : passe / échoue / non vérifié
+- Tests : passent / échouent / non vérifiés
+- Dernière mise à jour : <AAAA-MM-JJ> par <agent>
+
+## En cours / inachevé
+- <élément> : <où j'en suis exactement, fichiers concernés>
+
+## Problèmes connus et pièges
+- <bug, dette technique, comportement surprenant, fichier à ne pas toucher>
+
+## Points non vérifiés
+- <ce que je n'ai pas pu tester ou exécuter>
+
+## Prochaines étapes (par priorité)
+1. <action concrète et précise>
+2. <action suivante>
+
+## Questions ouvertes pour l'humain
+- <question>
+```
+
+Règles :
+- **Factuel et vérifiable** : pas de « devrait marcher ». Écris ce que tu as réellement exécuté.
+- **Actionnable** : « Prochaines étapes » doit permettre à un autre agent de reprendre sans te poser de question.
+- **Concis** : ne recopie pas le code ; référence les fichiers et les commits. Ce qui a été fait va dans le changelog, pas ici.
+- Ne laisse jamais le dépôt cassé en fin de session. Si le travail est incomplet, isole-le (branche, commit `wip:` explicite) et décris-le dans « En cours ».
+- Ne supprime pas les informations d'un autre agent sans raison : complète ou corrige-les en expliquant pourquoi.
+
+---
+
+## 10. Réponse finale à l'humain
+
+Termine chaque tâche par un court compte rendu :
+
+1. **Ce que j'ai fait** (2-5 puces, avec les fichiers modifiés).
+2. **Comment je l'ai vérifié** (commandes exécutées et résultats).
+3. **Ce que je n'ai pas pu vérifier ou ce qui reste à faire.**
+4. **Décisions ou questions** qui nécessitent ton attention.
+
+Un échec ou une limite clairement exposés valent mieux qu'un faux succès.
