@@ -1,9 +1,11 @@
 # Mission : proposer et créer la structure de la couche d'accès à l'API
 
 ## Contexte
-Ce projet Next.js (App Router) doit consommer une API REST Laravel documentée dans `openapi.yaml` (à la racine du projet ; demande-moi le chemin s'il est introuvable).
-URL de base de l'API : `http://localhost:8000/api/v2`
-Authentification : **jetons personnels Laravel Sanctum, envoyés dans l'en-tête `Authorization: Bearer <token>`**. Ce n'est PAS le mode Sanctum « SPA » par cookie : aucun cookie de session ni jeton CSRF Laravel n'est utilisé entre Next.js et l'API.
+- Ce projet Next.js (App Router) doit consommer une API REST Laravel documentée dans `openapi.yaml` (à la racine du projet ; demande-moi le chemin s'il est introuvable).
+- URL de base de l'API : `http://localhost:8000/api/v2`
+- Authentification : **jetons personnels Laravel Sanctum, envoyés dans l'en-tête `Authorization: Bearer <token>`**. Ce n'est PAS le mode Sanctum « SPA » par cookie : aucun cookie de session ni jeton CSRF Laravel n'est utilisé entre Next.js et l'API.
+- Le fichier `.ai\guide_api_v2.md` est un guide d'integration de l'API
+
 
 Lis d'abord `AGENTS.md` et respecte-le intégralement (plan avant modification, validation, changelog, etc.). Cette mission s'y ajoute, elle ne le remplace pas.
 

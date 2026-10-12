@@ -12,11 +12,12 @@
     "axios": "^1.20.0",
     "daisyui": "^5.7.47",
     "next": "16.3.5",
+    "postcss": "^8.5.29",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -24,7 +25,7 @@
     "eslint-config-next": "16.3.5",
     "openapi-typescript": "7.13.0",
     "server-only": "0.0.1",
-    "tailwindcss": "^4",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5",
     "zod": "4.6.5"
   }
