@@ -1,4 +1,4 @@
-# AGENTS.md
+# Instructions.md
 
 > Ce fichier s'adresse à **tous les agents de codage IA** (Claude Code, Codex, Cursor, Copilot, Gemini, etc.) qui interviennent sur ce dépôt.
 > Plusieurs agents se relaient sur ce projet : ce fichier et le dossier `.ai/` sont la **source de vérité commune**.

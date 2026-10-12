@@ -1,1 +1,3 @@
-- fais ce qui est dit dans le fichier `.ai/todo.md` en respectant aussi les instructions dans `.ai/instructions.md`
+- Lis le fichier `AGENTS.md` 
+- Lis le fichier `.ai/instructions.md`
+- Execute le fichier `.ai/todo.md` **en respectant toutes les instructions données**
